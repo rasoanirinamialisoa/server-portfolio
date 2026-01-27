@@ -13,7 +13,13 @@ COPY . .
 RUN curl -sS https://getcomposer.org/installer | php \
     && mv composer.phar /usr/local/bin/composer
 
-RUN composer install --no-dev --optimize-autoloader
+RUN git config --global --add safe.directory /var/www/html
+
+RUN composer install --no-dev --optimize-autoloader \
+    --classmap-authoritative \
+    --no-scripts
+
+RUN php bin/console cache:clear --env=prod --no-debug
 
 RUN chown -R www-data:www-data var
 
