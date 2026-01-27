@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y \
 # Activer Apache modules
 RUN a2enmod rewrite
 
-# Configurer Apache pour Render (port 10000)
+# Configurer pour Render (port 10000)
 RUN echo 'Listen 10000' > /etc/apache2/ports.conf
 RUN echo '<VirtualHost *:10000>\n\
     ServerName localhost\n\
@@ -37,7 +37,7 @@ RUN echo '<VirtualHost *:10000>\n\
     CustomLog /dev/stdout combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
-# Désactiver le site par défaut sur port 80
+# Désactiver l'écoute sur le port 80
 RUN sed -i '/Listen 80/d' /etc/apache2/ports.conf
 
 WORKDIR /var/www/html
@@ -51,27 +51,30 @@ RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local
 # Résoudre problème Git
 RUN git config --global --add safe.directory /var/www/html
 
-# ÉTAPE CRITIQUE : Installer d'abord TOUTES les dépendances pour générer le cache correctement
-RUN composer install --no-interaction --prefer-dist
+# Forcer l'environnement de production
+ENV APP_ENV=prod
+ENV APP_DEBUG=0
 
-# Nettoyer le cache en mode dev (pour générer les fichiers correctement)
-RUN APP_ENV=dev php bin/console cache:clear
+# Modifier config/bundles.php pour désactiver DebugBundle et WebProfilerBundle complètement
+RUN sed -i "s/Symfony\\\\Bundle\\\\DebugBundle\\\\DebugBundle::class => \['dev' => true, 'test' => true\]/Symfony\\\\Bundle\\\\DebugBundle\\\\DebugBundle::class => ['dev' => false, 'test' => false]/" config/bundles.php
+RUN sed -i "s/Symfony\\\\Bundle\\\\WebProfilerBundle\\\\WebProfilerBundle::class => \['dev' => true, 'test' => true\]/Symfony\\\\Bundle\\\\WebProfilerBundle\\\\WebProfilerBundle::class => ['dev' => false, 'test' => false]/" config/bundles.php
+RUN sed -i "s/Symfony\\\\Bundle\\\\MakerBundle\\\\MakerBundle::class => \['dev' => true\]/Symfony\\\\Bundle\\\\MakerBundle\\\\MakerBundle::class => ['dev' => false]/" config/bundles.php
 
-# ÉTAPE CRITIQUE : Maintenant installer seulement les dépendances de production
-# MAIS garder le cache généré précédemment
+# Installer sans les dépendances de dev
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
-# Régénérer le cache en mode production
-RUN APP_ENV=prod APP_DEBUG=0 php bin/console cache:clear --no-debug
+# Nettoyer le cache
+RUN php bin/console cache:clear --no-debug
 
-# Créer les répertoires nécessaires
+# Vérifier que les bundles de dev sont bien désactivés
+RUN echo "=== Vérification des bundles ===" && \
+    cat config/bundles.php && \
+    echo "=== Fin de vérification ==="
+
+# Créer les répertoires nécessaires avec les bonnes permissions
 RUN mkdir -p var/cache/prod var/log var/sessions \
     && chmod -R 777 var \
     && chown -R www-data:www-data var public
-
-# Variables d'environnement pour la production
-ENV APP_ENV=prod
-ENV APP_DEBUG=0
 
 EXPOSE 10000
 
