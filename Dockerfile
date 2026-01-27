@@ -1,68 +1,67 @@
 FROM php:8.2-apache
 
-# Installer les dépendances
+# Mettre à jour et installer les dépendances
 RUN apt-get update && apt-get install -y \
-    git unzip libicu-dev libzip-dev \
-    && docker-php-ext-install intl zip pdo pdo_mysql opcache
+    git \
+    unzip \
+    libicu-dev \
+    libzip-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        intl \
+        zip \
+        pdo \
+        pdo_mysql \
+        opcache \
+        gd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Activer les modules Apache
+# Activer Apache modules
 RUN a2enmod rewrite
 
-# Configurer Apache pour écouter sur le port 10000 (port Render)
+# Configurer pour Render (port 10000)
 RUN echo 'Listen 10000' > /etc/apache2/ports.conf
 RUN echo '<VirtualHost *:10000>\n\
-    ServerAdmin webmaster@localhost\n\
     DocumentRoot /var/www/html/public\n\
-    \n\
     <Directory /var/www/html/public>\n\
         AllowOverride All\n\
         Require all granted\n\
-        Options -Indexes +FollowSymLinks\n\
-        \n\
-        <IfModule mod_rewrite.c>\n\
-            RewriteEngine On\n\
-            RewriteCond %{REQUEST_FILENAME} !-f\n\
-            RewriteRule ^(.*)$ index.php [QSA,L]\n\
-        </IfModule>\n\
+        FallbackResource /index.php\n\
     </Directory>\n\
-    \n\
     ErrorLog /dev/stderr\n\
     CustomLog /dev/stdout combined\n\
 </VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
-# Désactiver le site par défaut sur le port 80
-RUN a2dissite 000-default
-RUN a2ensite 000-default
-
 WORKDIR /var/www/html
 
-# Copier les fichiers du projet
+# Copier les fichiers
 COPY . .
 
 # Installer Composer
-RUN curl -sS https://getcomposer.org/installer | php \
-    && mv composer.phar /usr/local/bin/composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Configurer Git
+# Résoudre problème Git
 RUN git config --global --add safe.directory /var/www/html
 
-# Installer les dépendances
-RUN composer install --no-dev --optimize-autoloader \
-    --classmap-authoritative \
-    --no-scripts
+# Mode développement pour voir les erreurs
+ENV APP_ENV=dev
+ENV APP_DEBUG=1
 
-# Nettoyer le cache
-RUN php bin/console cache:clear --env=prod --no-debug
+# Installer toutes les dépendances
+RUN composer install --no-interaction --prefer-dist
 
-# Définir les permissions
-RUN chown -R www-data:www-data var public
+# Vider le cache
+RUN php bin/console cache:clear
 
-# Variables d'environnement pour production
-ENV APP_ENV=prod
-ENV APP_DEBUG=0
+# Créer les répertoires nécessaires
+RUN mkdir -p var/cache var/log var/sessions \
+    && chmod -R 777 var \
+    && chown -R www-data:www-data var public
 
-# Exposer le port 10000 (port Render)
 EXPOSE 10000
 
-# Démarrer Apache sur le port 10000
 CMD ["apache2-foreground"]
