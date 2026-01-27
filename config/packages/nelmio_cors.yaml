@@ -1,0 +1,6 @@
+nelmio_cors:
+  defaults:
+    allow_origin: ['*']
+    allow_headers: ['Content-Type', 'Authorization']
+    allow_methods: ['POST', 'GET', 'OPTIONS']
+    max_age: 3600
