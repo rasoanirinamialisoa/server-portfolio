@@ -63,6 +63,10 @@ RUN sed -i "s/Symfony\\\\Bundle\\\\MakerBundle\\\\MakerBundle::class => \['dev' 
 # Installer sans les dépendances de dev
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
+# Supprimer les fichiers de configuration des bundles non installés en prod
+RUN rm -f config/packages/debug.yaml config/packages/dev/debug.yaml config/packages/test/debug.yaml || true
+RUN rm -f config/packages/web_profiler.yaml config/packages/dev/web_profiler.yaml config/packages/test/web_profiler.yaml || true
+
 # Nettoyer le cache
 RUN php bin/console cache:clear --no-debug
 
