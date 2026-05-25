@@ -1,15 +1,21 @@
 FROM php:8.2-apache
 
+# =========================
+# DEPENDENCIES SYSTEM
+# =========================
 RUN apt-get update && apt-get install -y \
-        git unzip libicu-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev \
-        nano less \
+    git unzip curl \
+    libicu-dev libzip-dev \
+    libpng-dev libjpeg-dev libfreetype6-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) intl zip pdo pdo_mysql opcache gd \
+    && docker-php-ext-install intl zip pdo pdo_mysql opcache gd \
     && a2enmod rewrite \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# ✅ ICI
+# =========================
+# APACHE CONFIG (Symfony /public)
+# =========================
 RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available/000-default.conf \
     && sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/c\<Directory /var/www/html/public>\n\
     AllowOverride All\n\
@@ -18,29 +24,56 @@ RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available
 
 WORKDIR /var/www/html
 
-COPY . .
-
+# =========================
+# COMPOSER
+# =========================
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# =========================
+# SAFE DIRECTORY (git/docker)
+# =========================
 RUN git config --global --add safe.directory /var/www/html
 
+# =========================
+# ENV PROD
+# =========================
 ENV APP_ENV=prod
 ENV APP_DEBUG=0
 
-RUN composer install --no-dev --optimize-autoloader --no-scripts
+# =========================
+# INSTALL DEPENDENCIES (CACHE OPTIMIZED)
+# =========================
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-RUN rm -f config/packages/dev/*.yaml config/packages/test/*.yaml || true
+# =========================
+# COPY PROJECT
+# =========================
+COPY . .
 
+# =========================
+# SYMFONY OPTIMIZATION
+# =========================
+RUN composer dump-autoload --optimize
+
+RUN php bin/console cache:clear --env=prod
+RUN php bin/console cache:warmup --env=prod
+
+# =========================
+# PERMISSIONS FIX (IMPORTANT)
+# =========================
 RUN mkdir -p var/cache var/log \
     && chown -R www-data:www-data var public \
     && chmod -R 775 var public
 
-USER www-data
-RUN php bin/console cache:clear --no-warmup
-RUN php bin/console cache:warmup
-
-USER root
+# =========================
+# ENTRYPOINT
+# =========================
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+USER www-data
+
 ENTRYPOINT ["docker-entrypoint.sh"]
+
+CMD ["apache2-foreground"]
