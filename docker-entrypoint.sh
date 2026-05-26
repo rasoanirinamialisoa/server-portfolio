@@ -1,8 +1,9 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Démarrage Symfony..."
+echo "🚀 Starting Symfony..."
 
 php bin/console cache:clear --env=prod || true
+php bin/console cache:warmup --env=prod || true
 
-apache2-foreground
+exec apache2-foreground

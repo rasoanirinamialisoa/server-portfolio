@@ -1,7 +1,7 @@
 FROM php:8.2-apache
 
 # =========================
-# DEPENDENCIES SYSTEM
+# SYSTEM DEPENDENCIES
 # =========================
 RUN apt-get update && apt-get install -y \
     git unzip curl \
@@ -14,16 +14,11 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # =========================
-# APACHE CONFIG (Symfony /public)
+# APACHE CONFIG (Symfony public/)
 # =========================
-RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available/000-default.conf \
-    && sed -i '/<Directory \/var\/www\/>/,/<\/Directory>/c\<Directory /var/www/html/public>\n\
-    AllowOverride All\n\
-    Require all granted\n\
-    </Directory>' /etc/apache2/apache2.conf
+RUN sed -i 's#/var/www/html#/var/www/html/public#g' /etc/apache2/sites-available/000-default.conf
 
 WORKDIR /var/www/html
-COPY .env .env
 
 # =========================
 # COMPOSER
@@ -31,38 +26,20 @@ COPY .env .env
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # =========================
-# SAFE DIRECTORY (git/docker)
-# =========================
-RUN git config --global --add safe.directory /var/www/html
-
-# =========================
-# ENV PROD
-# =========================
-ENV APP_ENV=prod
-ENV APP_DEBUG=0
-
-# =========================
-# INSTALL DEPENDENCIES (CACHE OPTIMIZED)
-# =========================
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
-
-# =========================
-# COPY PROJECT
+# PROJECT FILES
 # =========================
 COPY . .
 
 # =========================
-# SYMFONY OPTIMIZATION
+# INSTALL DEPENDENCIES
 # =========================
-RUN composer dump-autoload --optimize
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # =========================
-# PERMISSIONS FIX (IMPORTANT)
+# PERMISSIONS
 # =========================
 RUN mkdir -p var/cache var/log \
-    && chown -R www-data:www-data var public \
-    && chmod -R 775 var public
+    && chown -R www-data:www-data var public
 
 # =========================
 # ENTRYPOINT
