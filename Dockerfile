@@ -33,7 +33,7 @@ COPY . .
 # =========================
 # INSTALL DEPENDENCIES
 # =========================
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
 # =========================
 # PERMISSIONS
