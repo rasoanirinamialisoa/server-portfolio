@@ -56,8 +56,10 @@ COPY . .
 # =========================
 RUN composer dump-autoload --optimize
 
-RUN php bin/console cache:clear --env=prod
-RUN php bin/console cache:warmup --env=prod
+# Cache clear et warmup avec .env.prod
+RUN if [ -f .env.prod ]; then cp .env.prod .env; fi && \
+    php bin/console cache:clear --env=prod && \
+    php bin/console cache:warmup --env=prod
 
 # =========================
 # PERMISSIONS FIX (IMPORTANT)
