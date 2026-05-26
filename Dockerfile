@@ -56,9 +56,6 @@ COPY . .
 # =========================
 RUN composer dump-autoload --optimize
 
-# Copy env
-RUN if [ -f .env.prod ]; then cp .env.prod .env; fi
-
 # =========================
 # PERMISSIONS FIX (IMPORTANT)
 # =========================
