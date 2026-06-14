@@ -1,9 +1,10 @@
 <?php
+// Dans public/index.php ou config/bootstrap.php
+use Symfony\Component\Dotenv\Dotenv;
 
-use App\Kernel;
-
-require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
-
-return function (array $context) {
-    return new Kernel($context['APP_ENV'], (bool) $context['APP_DEBUG']);
-};
+// Ne charge le .env qu'en environnement local
+if (!isset($_SERVER['APP_ENV']) && !isset($_ENV['APP_ENV'])) {
+    if (file_exists(dirname(__DIR__).'/.env')) {
+        (new Dotenv())->usePutenv()->bootEnv(dirname(__DIR__).'/.env');
+    }
+}
