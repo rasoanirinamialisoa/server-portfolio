@@ -1,10 +1,14 @@
 <?php
-// Dans public/index.php ou config/bootstrap.php
-use Symfony\Component\Dotenv\Dotenv;
 
-// Ne charge le .env qu'en environnement local
-if (!isset($_SERVER['APP_ENV']) && !isset($_ENV['APP_ENV'])) {
-    if (file_exists(dirname(__DIR__).'/.env')) {
-        (new Dotenv())->usePutenv()->bootEnv(dirname(__DIR__).'/.env');
-    }
-}
+use App\Kernel;
+
+require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
+
+return function (array $context) {
+    // Ne pas charger .env - utiliser les variables d'environnement Render
+    // Les valeurs viennent des variables définies dans le dashboard Render
+    $_SERVER['APP_ENV'] = $_ENV['APP_ENV'] = 'prod';
+    $_SERVER['APP_DEBUG'] = $_ENV['APP_DEBUG'] = '0';
+    
+    return new Kernel($_ENV['APP_ENV'], (bool) $_ENV['APP_DEBUG']);
+};
