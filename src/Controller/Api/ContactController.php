@@ -18,7 +18,6 @@ class ContactController extends AbstractController
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
-        // Validation
         if (empty($data['name']) || empty($data['email']) || empty($data['message'])) {
             return $this->json([
                 'success' => false,
@@ -26,7 +25,6 @@ class ContactController extends AbstractController
             ], 400);
         }
 
-        // Validation email
         if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
             return $this->json([
                 'success' => false,
@@ -34,7 +32,6 @@ class ContactController extends AbstractController
             ], 400);
         }
 
-        // Envoyer le message dans la file d'attente (asynchrone)
         $bus->dispatch(new ContactEmailMessage(
             $data['name'],
             $data['email'],
@@ -42,7 +39,6 @@ class ContactController extends AbstractController
             $data['subject'] ?? null
         ));
 
-        // Retourner immédiatement (l'email sera envoyé en arrière-plan)
         return $this->json([
             'success' => true,
             'message' => 'Votre message a été envoyé avec succès'

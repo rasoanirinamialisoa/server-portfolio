@@ -12,7 +12,10 @@ php bin/console cache:warmup || true
 
 
 echo "📨 Starting Messenger worker..."
-php bin/console messenger:consume async --time-limit=3600 &
+php bin/console messenger:consume async \
+    --time-limit=3600 \
+    --memory-limit=128M \
+    --keepalive &
 
 
 echo "🌐 Starting Apache..."
