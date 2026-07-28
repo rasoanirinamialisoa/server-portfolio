@@ -7,6 +7,9 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Paramètres pour les emails
+    mail_from: '%env(MAIL_FROM)%'
+    mail_to: '%env(MAIL_TO)%'
 
 services:
     # default configuration for services in *this* file
@@ -18,6 +21,17 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    # Configuration explicite du Handler (optionnel car autowire gère déjà)
+    # Mais on garde pour spécifier les paramètres mail_from et mail_to
+    App\MessageHandler\ContactEmailMessageHandler:
+        arguments:
+            $mailFrom: '%mail_from%'
+            $mailTo: '%mail_to%'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
